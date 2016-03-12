@@ -10,7 +10,7 @@ if [ ! -f $agentinfo ]; then
   1>&2 echo "$self: agent info file not found"
   exit 1
 fi
-. $agentinfo
+source $agentinfo
 
 # Weird syntax to strip off everything including and after first colon.
 sockfile=${GPG_AGENT_INFO%%:*}
