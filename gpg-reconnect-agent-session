@@ -1,0 +1,18 @@
+#!/bin/sh
+
+set -e
+
+self=`basename $0`
+
+# This agent info path is also in the crontab.
+agentinfo=$HOME/etc/gnupg/gpg-agent-info
+. $agentinfo
+
+# Weird syntax to strip off everything including and after first colon.
+sockfile=${GPG_AGENT_INFO%%:*}
+if [ ! -S $sockfile ]; then
+  1>&2 echo "$self: socket not found; failed to reconnect agent session"
+  exit 1
+fi
+echo "export GPG_AGENT_INFO=$GPG_AGENT_INFO"
+echo "export GPG_TTY=`tty`"
