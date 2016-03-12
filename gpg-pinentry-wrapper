@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# chris 2016-03-12
+
+self=`basename $0`
+uname=`uname`
+if [ $uname = "Darwin" ];then
+  exec \
+    /usr/local/MacGPG2/libexec/pinentry-mac.app/Contents/MacOS/pinentry-mac \
+    "$@"
+elif [ $uname = "FreeBSD" ];then
+  exec /usr/local/bin/pinentry "$@"
+else
+  1>&2 echo "$self: unknown system; bailing"
+  exit 1
+fi
