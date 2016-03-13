@@ -33,34 +33,34 @@ class Key(object):
   def shortid(self): return self.id[-8:]
 
 # Cross-platform support for FreeBSD and OS X (Homebrew).  Add other
-# platforms if needed.
-def makepath():
-  path = ()
-  if sys.platform.startswith('freebsd'):
-    path += '/usr/local/libexec',
-  elif sys.platform == 'darwin':
-    path += '/usr/local/opt/gpg-agent/libexec',
-  else:
-    raise Exception('unsupported platform %s' % sys.platform)
-  path += '/usr/local/bin',
-  return path
-path = makepath()
-def getbin(bin):
+# platforms if needed.  Homebrew support is a little messy due to
+# non-centralized libexec.  The name of the directory under
+# `/usr/local/opt` also changes depending on the version/recipe.  Dumb.
+def getlibexec(bin):
   def isexe(path):
     return os.path.isfile(path) and os.access(path,os.X_OK)
-  for p in path:
-    p = os.path.join(p,bin)
-    if isexe(p): return p
-  raise Exception('%r not found in path' % p)
+  if sys.platform.startswith('freebsd'):
+    path = '/usr/local/libexec'
+  elif sys.platform == 'darwin':
+    base = '/usr/local/opt'
+    for path in os.listdir(base):
+      if any(path.startswith(x) for x in ('gnupg','gpg')):
+        path = os.path.join(base,path,'libexec')
+        break
+  else:
+    raise Exception('unsupported platform %s' % sys.platform)
+  path = os.path.join(path,bin)
+  if isexe(path): return path
+  raise Exception('%r not found in path; tried %r' % (bin, path))
 
 def ensureagent():
-  subprocess.check_call((getbin('gpg-connect-agent'),'--quiet','/bye'))
+  subprocess.check_call(('gpg-connect-agent','--quiet','/bye'))
 
 # Fetch primary secret keys.  The details of the GPG colon format are
 # detailed in the `doc/DETAILS` file in their repository.  Note that
 # this will pull in the first user ID only for a given key.
 def getkeys():
-  args = getbin('gpg'),'--list-secret-keys','--with-keygrip','--with-colons'
+  args = 'gpg','--list-secret-keys','--with-keygrip','--with-colons'
   keyfields = subprocess.check_output(args)
   keyfields = keyfields.strip().split('\n')
   keyfields = [x.split(':') for x in keyfields]
@@ -112,7 +112,7 @@ def prompt(key):
   return getpass(template % locals())
 
 def preset(key,passphrase):
-  args = getbin('gpg-preset-passphrase'),'--preset',key.grip
+  args = getlibexec('gpg-preset-passphrase'),'--preset',key.grip
   p = subprocess.Popen(args,stdin=subprocess.PIPE)
   p.communicate(passphrase)
   if p.returncode:
