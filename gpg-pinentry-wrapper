@@ -2,6 +2,8 @@
 
 # chris 2016-03-12
 
+# Add support for other platforms if needed.
+
 self=`basename $0`
 uname=`uname`
 if [ $uname = "Darwin" ];then

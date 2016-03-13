@@ -3,8 +3,8 @@
 .PHONY: help install uninstall
 
 utils=$(wildcard gpg-*)
-prefix=/usr/local
-bin=$(prefix)/bin
+DESTDIR=/usr/local
+bin=$(DESTDIR)/bin
 
 help:
 	@echo targets: install uninstall
