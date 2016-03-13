@@ -126,7 +126,10 @@ def main():
   ArgumentParser(description=descr).parse_args()
 
   ensureagent()
-  for key in getkeys(): preset(key,prompt(key))
+  for key in getkeys():
+    try: passphrase = prompt(key)
+    except EOFError: return 3
+    preset(key,passphrase)
 
-try: main()
+try: sys.exit(main() or 0)
 except KeyboardInterrupt: sys.exit(130)
