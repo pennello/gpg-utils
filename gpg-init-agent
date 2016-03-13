@@ -56,7 +56,8 @@ def getbin(bin):
 def ensureagent():
   subprocess.check_call((getbin('gpg-connect-agent'),'--quiet','/bye'))
 
-# Fetch primary secret keys.
+# Fetch primary secret keys.  The details of the GPG colon format are
+# detailed in the `doc/DETAILS` file in their repository.
 def getkeys():
   args = getbin('gpg'),'--list-secret-keys','--with-keygrip','--with-colons'
   keyfields = subprocess.check_output(args)
