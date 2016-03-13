@@ -34,20 +34,21 @@ class Key(object):
 
 # Cross-platform support for FreeBSD and OS X (Homebrew).  Add other
 # platforms if needed.
+def makepath():
+  path = ()
+  if sys.platform.startswith('freebsd'):
+    path += '/usr/local/libexec',
+  elif sys.platform == 'darwin':
+    path += '/usr/local/opt/gpg-agent/libexec',
+  else:
+    raise Exception('unsupported platform %s' % sys.platform)
+  path += '/usr/local/bin',
+  return path
+path = makepath()
 def getbin(bin):
-  def makepath():
-    path = ()
-    if sys.platform.startswith('freebsd'):
-      path += '/usr/local/libexec',
-    elif sys.platform == 'darwin':
-      path += '/usr/local/opt/gpg-agent/libexec',
-    else:
-      raise Exception('unsupported platform %s' % sys.platform)
-    path += '/usr/local/bin',
-    return path
   def isexe(path):
     return os.path.isfile(path) and os.access(path,os.X_OK)
-  for p in makepath():
+  for p in path:
     p = os.path.join(p,bin)
     if isexe(p): return p
   raise Exception('%r not found in path' % p)
