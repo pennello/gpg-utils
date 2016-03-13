@@ -6,9 +6,11 @@ import os
 import os.path
 import subprocess
 import sys
+from argparse import ArgumentParser
 from datetime import datetime
 from getpass import getpass
 
+# Little wrapper object for GPG keys.
 class Key(object):
   __slots__ = 'length','algo','id','createdstamp','grip','userid'
 
@@ -50,9 +52,10 @@ def getbin(bin):
     if isexe(p): return p
   raise Exception('%r not found in path' % p)
 
-def startagent():
+def ensureagent():
   subprocess.check_call((getbin('gpg-connect-agent'),'--quiet','/bye'))
 
+# Fetch primary secret keys.
 def getkeys():
   args = getbin('gpg'),'--list-secret-keys','--with-keygrip','--with-colons'
   keyfields = subprocess.check_output(args)
@@ -90,6 +93,7 @@ def getkeys():
     length = None
     getting = False
 
+# This is based off of the prompt in GPG version 2.1.11.
 template = '''Please enter the passphrase to unlock the OpenPGP secret key:
 "%(userid)s"
 %(length)s-bit %(algo)s key, ID %(id)s,
@@ -112,7 +116,13 @@ def preset(key,passphrase):
     raise subprocess.CalledProcessError(p.returncode,args)
 
 def main():
-  startagent()
+  # Argument parser just for a useful help message.
+  descr = ("Start the GPG agent if it's not already running by quietly running "
+  '`gpg-connect-agent /bye`. Fetch primary secret keys and prompt for their '
+  'passphrases. Preset the passphrases with the GPG agent.')
+  ArgumentParser(description=descr).parse_args()
+
+  ensureagent()
   for key in getkeys(): preset(key,prompt(key))
 
 try: main()
