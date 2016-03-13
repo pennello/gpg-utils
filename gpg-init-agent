@@ -1,0 +1,119 @@
+#!/usr/bin/env python
+
+# chris 2016-03-13
+
+import os
+import os.path
+import subprocess
+import sys
+from datetime import datetime
+from getpass import getpass
+
+class Key(object):
+  __slots__ = 'length','algo','id','createdstamp','grip','userid'
+
+  def __init__(self,*a):
+    for field,value in zip(self.__slots__,a):
+      if value is None:
+        raise ValueError('%s cannot be None' % field)
+      setattr(self,field,value)
+
+    if self.algo != 1:
+      raise ValueError('unknown algorithm id %s' % self.algo)
+    self.algo = 'RSA'
+
+    if len(self.id) != 16:
+      raise ValueError('invalid key id length %r' % self.id)
+
+    if len(self.grip) != 40:
+      raise ValueError('invalid key grip length %r' % self.grip)
+
+  def shortid(self): return self.id[-8:]
+
+# Cross-platform support for FreeBSD and OS X (Homebrew).  Add other
+# platforms if needed.
+def getbin(bin):
+  def makepath():
+    path = ()
+    if sys.platform.startswith('freebsd'):
+      path += '/usr/local/libexec',
+    elif sys.platform == 'darwin':
+      path += '/usr/local/opt/gpg-agent/libexec',
+    else:
+      raise Exception('unsupported platform %s' % sys.platform)
+    path += '/usr/local/bin',
+    return path
+  def isexe(path):
+    return os.path.isfile(path) and os.access(path,os.X_OK)
+  for p in makepath():
+    p = os.path.join(p,bin)
+    if isexe(p): return p
+  raise Exception('%r not found in path' % p)
+
+def startagent():
+  subprocess.check_call((getbin('gpg-connect-agent'),'--quiet','/bye'))
+
+def getkeys():
+  args = getbin('gpg'),'--list-secret-keys','--with-keygrip','--with-colons'
+  keyfields = subprocess.check_output(args)
+  keyfields = keyfields.strip().split('\n')
+  keyfields = [x.split(':') for x in keyfields]
+
+  getting = False
+  length = None
+  algo = None
+  id = None
+  createdstamp = None
+  grip = None
+  for fields in keyfields:
+    if not getting:
+      if fields[0] == 'sec':
+        getting = True
+        length = int(fields[2])
+        algo = int(fields[3])
+        id = fields[4]
+        createdstamp = datetime.fromtimestamp(int(fields[5]))
+      continue
+    if grip is None:
+      if fields[0] != 'grp': raise Exception(fields)
+      grip = fields[9]
+      continue
+    if fields[0] != 'uid': raise Exception(fields)
+    userid = fields[9]
+
+    yield Key(length,algo,id,createdstamp,grip,userid)
+
+    grip = None
+    createstamp = None
+    id = None
+    algo = None
+    length = None
+    getting = False
+
+template = '''Please enter the passphrase to unlock the OpenPGP secret key:
+"%(userid)s"
+%(length)s-bit %(algo)s key, ID %(id)s,
+created %(createdstamp)s.
+
+Passphrase: '''
+def prompt(key):
+  userid = key.userid
+  length = key.length
+  algo = key.algo
+  id = key.shortid()
+  createdstamp = key.createdstamp.strftime('%Y-%m-%d')
+  return getpass(template % locals())
+
+def preset(key,passphrase):
+  args = getbin('gpg-preset-passphrase'),'--preset',key.grip
+  p = subprocess.Popen(args,stdin=subprocess.PIPE)
+  p.communicate(passphrase)
+  if p.returncode:
+    raise subprocess.CalledProcessError(p.returncode,args)
+
+def main():
+  startagent()
+  for key in getkeys(): preset(key,prompt(key))
+
+try: main()
+except KeyboardInterrupt: sys.exit(130)
