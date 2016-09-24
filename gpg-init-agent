@@ -80,6 +80,8 @@ def getkeys():
         id = fields[4]
         createdstamp = datetime.fromtimestamp(int(fields[5]))
       continue
+    # We don't currently parse/use the fingerprint.
+    if fields[0] == 'fpr': continue
     if grip is None:
       if fields[0] != 'grp': raise Exception(fields)
       grip = fields[9]
