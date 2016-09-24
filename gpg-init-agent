@@ -130,7 +130,9 @@ def main():
   ensureagent()
   for key in getkeys():
     try: passphrase = prompt(key)
-    except EOFError: return 3
+    except EOFError:
+      sys.stderr.write('*** not pre-setting passphrase for key ***\n')
+      continue
     preset(key,passphrase)
 
 try: sys.exit(main() or 0)
